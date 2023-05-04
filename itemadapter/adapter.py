@@ -89,13 +89,12 @@ class _MixinAttrsDataclassAdapter:
             raise KeyError(f"{self.item.__class__.__name__} does not support field: {field_name}")
 
     def __delitem__(self, field_name: str) -> None:
-        if field_name in self._fields_dict:
-            try:
-                delattr(self.item, field_name)
-            except AttributeError:
-                raise KeyError(field_name)
-        else:
+        if field_name not in self._fields_dict:
             raise KeyError(f"{self.item.__class__.__name__} does not support field: {field_name}")
+        try:
+            delattr(self.item, field_name)
+        except AttributeError:
+            raise KeyError(field_name)
 
     def __iter__(self) -> Iterator:
         return iter(attr for attr in self._fields_dict if hasattr(self.item, attr))
@@ -202,13 +201,12 @@ class PydanticAdapter(AdapterInterface):
             raise KeyError(f"{self.item.__class__.__name__} does not support field: {field_name}")
 
     def __delitem__(self, field_name: str) -> None:
-        if field_name in self.item.__fields__:
-            try:
-                delattr(self.item, field_name)
-            except AttributeError:
-                raise KeyError(field_name)
-        else:
+        if field_name not in self.item.__fields__:
             raise KeyError(f"{self.item.__class__.__name__} does not support field: {field_name}")
+        try:
+            delattr(self.item, field_name)
+        except AttributeError:
+            raise KeyError(field_name)
 
     def __iter__(self) -> Iterator:
         return iter(attr for attr in self.item.__fields__ if hasattr(self.item, attr))
@@ -297,17 +295,16 @@ class ItemAdapter(MutableMapping):
 
     @classmethod
     def is_item(cls, item: Any) -> bool:
-        for adapter_class in cls.ADAPTER_CLASSES:
-            if adapter_class.is_item(item):
-                return True
-        return False
+        return any(
+            adapter_class.is_item(item) for adapter_class in cls.ADAPTER_CLASSES
+        )
 
     @classmethod
     def is_item_class(cls, item_class: type) -> bool:
-        for adapter_class in cls.ADAPTER_CLASSES:
-            if adapter_class.is_item_class(item_class):
-                return True
-        return False
+        return any(
+            adapter_class.is_item_class(item_class)
+            for adapter_class in cls.ADAPTER_CLASSES
+        )
 
     @classmethod
     def _get_adapter_class(cls, item_class: type) -> Type[AdapterInterface]:
@@ -372,6 +369,4 @@ def _asdict(obj: Any) -> Any:
         return obj.__class__(_asdict(x) for x in obj)
     if isinstance(obj, ItemAdapter):
         return obj.asdict()
-    if ItemAdapter.is_item(obj):
-        return ItemAdapter(obj).asdict()
-    return obj
+    return ItemAdapter(obj).asdict() if ItemAdapter.is_item(obj) else obj

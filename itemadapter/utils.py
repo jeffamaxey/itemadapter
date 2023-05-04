@@ -11,21 +11,15 @@ __all__ = ["is_item", "get_field_meta_from_class"]
 
 def _is_dataclass(obj: Any) -> bool:
     """In py36, this returns False if the "dataclasses" backport module is not installed."""
-    if dataclasses is None:
-        return False
-    return dataclasses.is_dataclass(obj)
+    return False if dataclasses is None else dataclasses.is_dataclass(obj)
 
 
 def _is_attrs_class(obj: Any) -> bool:
-    if attr is None:
-        return False
-    return attr.has(obj)
+    return False if attr is None else attr.has(obj)
 
 
 def _is_pydantic_model(obj: Any) -> bool:
-    if pydantic is None:
-        return False
-    return issubclass(obj, pydantic.BaseModel)
+    return False if pydantic is None else issubclass(obj, pydantic.BaseModel)
 
 
 def _get_pydantic_model_metadata(item_model: Any, field_name: str) -> MappingProxyType:
@@ -53,7 +47,7 @@ def _get_pydantic_model_metadata(item_model: Any, field_name: str) -> MappingPro
             metadata[attribute] = value
     if not field.allow_mutation:
         metadata["allow_mutation"] = field.allow_mutation
-    metadata.update(field.extra)
+    metadata |= field.extra
 
     return MappingProxyType(metadata)
 
